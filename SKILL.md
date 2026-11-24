@@ -13,7 +13,8 @@ house exists: the scene is a Python script that Claude writes, renders, looks at
 ## What you need
 
 - **Blender 4.2 or newer** on PATH as `blender` (tested on 5.2 with Cycles on an NVIDIA GPU; any OptiX or CUDA card
-  works, 8 GB is enough with the steps in "Fit the card").
+  works, 8 GB is enough with the steps in "Fit the card"). Without a GPU, Cycles falls back to the CPU with Open
+  Image Denoise; without Blender, `pip install bpy` (5.2, Python 3.13) runs the same scripts as `python build.py -- ...`.
 - **Python 3** with `pillow` (the counter overlay) and, for reading a plan image, `opencv-python` and `numpy`.
 - **ffmpeg** on PATH (or `FFMPEG=/path/to/ffmpeg`).
 - **Optional:** `ELEVENLABS_API_KEY` for the music. Without it `tools/music.py` mixes the action sounds alone.
@@ -34,9 +35,11 @@ python "$SKILL_DIR/houses/courtyard/fetch_assets.py"
 | **Courtyard house** | a pen sketch on paper (`sketch.png`) | `houses/courtyard/` | 14 x 14 m, a 7 x 7 m court with a red maple, tatami room, engawa, standing-seam ring roof. The film opens on the sketch, builds 2,444 parts on the paper in white clay with each system flashing its colour and a counter, then a wave from the maple turns paper into hillside and clay into cedar, washi and stone. |
 | **Cliff villa** | 4 reference images | `houses/villa/` | A travertine pavilion on a headland at sunset, an infinity pool cantilevered over the cliff. The film runs in over the sea, builds the villa from tiles and blocks, fills the pool, lights it up and dives in through the open glass. |
 | **Apartment** | a floor plan from a sales brochure | `houses/apartment/` | A 3-bedroom flat, walls traced from the plan's fill at its scale bar, doors and furniture read on a metre grid. A dollhouse view, then a walk through. |
+| **Plain-pied house** | a builder's plan with dimension labels | `houses/plainpied/` | A single-storey 3-bedroom house, 11.8 x 9.2 m with a cellier annex. Scale from the overall dimensions, walls written as numbers and checked against the traced fill (99 % overlap), every room's area checked against its label. Hipped Roman-tile roof, shutters, procedural materials (no downloads). Stills only: an orthographic top view laid over the plan (`compare.py`), a dollhouse, the exterior and three rooms. |
 
 Each house has `build.py` (the scene, stills), `film.py` (the film), `score.py` (the action sounds on the film's
-timeline) and `music_plan.json` (an ElevenLabs composition plan). Copy the closest one for a new house.
+timeline) and `music_plan.json` (an ElevenLabs composition plan); the plain-pied house has the stills side only.
+Copy the closest one for a new house.
 
 ```
 blender -b --factory-startup -P houses/courtyard/build.py -- tatami engawa corner --samples 192 --res 1920x1080
@@ -92,3 +95,9 @@ a quick preview of the whole film.
   in the opening, then pulls back into the room.
 - **Films run a length that is not round** (18-25 s), and each house gets its own.
 - **Images in the repo:** only what the person owns or CC0. A brochure plan stays with the person who brought it.
+- **A plan's trace is a measuring tool, not the model.** Scan jitter and arrowheads touching walls split a traced
+  wall into slivers. Read the wall bands off the trace, write the walls as numbers, then lay them back over the trace
+  and check the overlap (`plainpied/extract_walls.py`) and each room's area against its label.
+- **Blender 5's physical sky** (Multiple Scattering) at strength 1 lights a white floor about 5x brighter than a
+  3 W/m2 sun, and deep blue: run it at a few hundredths, half desaturated, and let the sun lead.
+- **bpy from pip:** `import bpy` before `import bmesh`, or bmesh is not there yet.

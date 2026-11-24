@@ -15,8 +15,8 @@ import os
 import random
 import sys
 
-import bmesh
-import bpy
+import bpy  # first: with bpy from pip, bmesh only exists once bpy is imported
+import bmesh  # noqa: E402
 from mathutils import Euler, Matrix, Vector, noise
 
 ASSET_DIR = os.environ.get("BLUEPRINT_ASSETS", os.path.join(os.path.expanduser("~"), ".blueprint", "polyhaven"))
@@ -46,26 +46,40 @@ def args(default_shots=("hero",)):
     return opts, shots or list(default_shots)
 
 
+def gpu(scene):
+    """Cycles on an OptiX (else CUDA) GPU; with neither, on the CPU with Open Image Denoise. Returns the device used."""
+    cp = bpy.context.preferences.addons["cycles"].preferences
+    for kind in ("OPTIX", "CUDA"):
+        try:
+            cp.compute_device_type = kind
+            cp.get_devices()
+        except TypeError:
+            continue
+        if any(d.type == kind for d in cp.devices):
+            for d in cp.devices:
+                d.use = d.type == kind
+            scene.cycles.device = "GPU"
+            scene.cycles.denoiser = "OPTIX" if kind == "OPTIX" else "OPENIMAGEDENOISE"
+            return kind
+    cp.compute_device_type = "NONE"
+    scene.cycles.device = "CPU"
+    scene.cycles.denoiser = "OPENIMAGEDENOISE"
+    return "CPU"
+
+
 def setup(opts, samples=256, res="1920x1080"):
-    """Empty scene, Cycles on the OptiX GPU, Khronos PBR Neutral (AgX turns warm light beige)."""
+    """Empty scene, Cycles on the OptiX GPU (or the CPU), Khronos PBR Neutral (AgX turns warm light beige)."""
     global OPTS, ROOT, FILM
     OPTS = opts
     FILM = bool(opts.get("film"))
     for o in list(bpy.data.objects):
         bpy.data.objects.remove(o, do_unlink=True)
     scene = bpy.context.scene
-    prefs = bpy.context.preferences
-    cp = prefs.addons["cycles"].preferences
-    cp.compute_device_type = "OPTIX"
-    cp.get_devices()
-    for d in cp.devices:
-        d.use = d.type == "OPTIX"
     scene.render.engine = "CYCLES"
-    scene.cycles.device = "GPU"
+    print("cycles on", gpu(scene))
     scene.cycles.samples = int(opts.get("samples", samples))
     scene.cycles.use_adaptive_sampling = True
     scene.cycles.use_denoising = True
-    scene.cycles.denoiser = "OPTIX"
     scene.cycles.max_bounces = 10
     scene.cycles.diffuse_bounces = 4
     scene.cycles.glossy_bounces = 4
