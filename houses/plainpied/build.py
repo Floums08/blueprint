@@ -713,7 +713,8 @@ def armchair(f):
     local_box("arm_base", at, d, -0.36, 0.36, -0.37, 0.37, 0.16, 0.42, M["blue"], bevel=0.05, seg=4)
     local_box("arm_back", at, d, -0.36, -0.2, -0.37, 0.37, 0.42, 0.82, M["blue"], bevel=0.06, seg=4)
     for s_ in (-1, 1):
-        local_box("arm_rest", at, d, -0.36, 0.36, s_ * 0.37 - (0.12 if s_ > 0 else 0), s_ * 0.37 + (0.12 if s_ < 0 else 0), 0.42, 0.6, M["blue"], bevel=0.05, seg=4)
+        # 5 mm proud of the base on every side: coplanar faces of two parts render as black specks
+        local_box("arm_rest", at, d, -0.365, 0.365, s_ * 0.375 - (0.125 if s_ > 0 else 0), s_ * 0.375 + (0.125 if s_ < 0 else 0), 0.42, 0.6, M["blue"], bevel=0.05, seg=4)
     local_box("arm_cushion", at, d, -0.2, 0.34, -0.25, 0.25, 0.42, 0.52, M["blue"], bevel=0.05, seg=4)
 
 
@@ -727,7 +728,7 @@ def sofa(f):
     local_box("sofa_base", at, d, bk, fr, -Lg / 2, Lg / 2, 0.08, 0.36, M["boucle"], bevel=0.035, seg=4)
     local_box("sofa_back", at, d, bk, bk + 0.2, -Lg / 2, Lg / 2, 0.36, 0.76, M["boucle"], bevel=0.06, seg=5)
     for s_ in (-1, 1):
-        local_box("sofa_arm", at, d, bk, fr, s_ * Lg / 2 - (0.2 if s_ > 0 else 0), s_ * Lg / 2 + (0.2 if s_ < 0 else 0), 0.36, 0.6, M["boucle"], bevel=0.06, seg=5)
+        local_box("sofa_arm", at, d, bk + 0.005, fr + 0.005, s_ * (Lg / 2 + 0.005) - (0.205 if s_ > 0 else 0), s_ * (Lg / 2 + 0.005) + (0.205 if s_ < 0 else 0), 0.36, 0.6, M["boucle"], bevel=0.06, seg=5)
     inner0, inner1 = -Lg / 2 + 0.2, Lg / 2 - 0.2
     for k in range(2):
         a0 = inner0 + (inner1 - inner0) * k / 2 + 0.008
