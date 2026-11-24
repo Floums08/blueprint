@@ -484,7 +484,9 @@ with into("roof"):  # the main block's west wall above the annex roof
 
 # ---------------------------------------------------------------- openings: lintels, sills, frames, glass, doors
 def frame_bar(w, a0, a1, c0, c1, z0, z1, mat=None, name="frame"):
-    return bx(name, *rect(w, a0, a1, c0, c1), z0, z1, mat or M["pvc"], bevel=0.003)
+    # bars butt into each other, never overlap: two coplanar faces of different objects in one spot shadow each
+    # other and Cycles renders the corner as a black speck
+    return bx(name, *rect(w, a0, a1, c0, c1), z0, z1, mat or M["pvc"], bevel=0.0)
 
 
 def glass_pane(w, a0, a1, c, z0, z1, mat):
@@ -543,17 +545,17 @@ for wid, ops in OPEN.items():
             fw = 0.06
             frame_bar(w, a0, a1, f0, f1, sill, sill + fw)
             frame_bar(w, a0, a1, f0, f1, head - fw, head)
-            frame_bar(w, a0, a0 + fw, f0, f1, sill, head)
-            frame_bar(w, a1 - fw, a1, f0, f1, sill, head)
+            frame_bar(w, a0, a0 + fw, f0, f1, sill + fw, head - fw)
+            frame_bar(w, a1 - fw, a1, f0, f1, sill + fw, head - fw)
             leaves = 2 if a1 - a0 > 0.8 else 1
             if leaves == 2:
                 m_ = (a0 + a1) / 2
-                frame_bar(w, m_ - 0.05, m_ + 0.05, f0, f1, sill, head)
+                frame_bar(w, m_ - 0.05, m_ + 0.05, f0, f1, sill + fw, head - fw)
                 for p0, p1 in ((a0 + fw, m_ - 0.05), (m_ + 0.05, a1 - fw)):  # sash frames
                     frame_bar(w, p0, p0 + 0.045, fc - 0.025, fc + 0.025, sill + fw, head - fw, name="sash")
                     frame_bar(w, p1 - 0.045, p1, fc - 0.025, fc + 0.025, sill + fw, head - fw, name="sash")
                     if o.get("french"):
-                        frame_bar(w, p0, p1, fc - 0.025, fc + 0.025, sill + fw, sill + 0.2, name="sash")
+                        frame_bar(w, p0 + 0.045, p1 - 0.045, fc - 0.025, fc + 0.025, sill + fw, sill + 0.2, name="sash")
             glass_pane(w, a0 + fw, a1 - fw, fc, sill + fw, head - fw, M["frosted" if o.get("frosted") else "glass"])
             if not ext:
                 continue
@@ -567,16 +569,16 @@ for wid, ops in OPEN.items():
                         cb0, cb1 = (c0 - 0.02, c0) if s < 0 else (c1, c1 + 0.02)
                         frame_bar(w, p0 + 0.04, p0 + sw - 0.04, cb0, cb1, zb - 0.05, zb + 0.05, M["shutter"], "shutter_ledge")
         elif kind == "entrance":
-            frame_bar(w, a0, a0 + 0.07, f0, f1, 0.0, head, M["entrance"])
-            frame_bar(w, a1 - 0.07, a1, f0, f1, 0.0, head, M["entrance"])
+            frame_bar(w, a0, a0 + 0.07, f0, f1, 0.0, head - 0.07, M["entrance"])
+            frame_bar(w, a1 - 0.07, a1, f0, f1, 0.0, head - 0.07, M["entrance"])
             frame_bar(w, a0, a1, f0, f1, head - 0.07, head, M["entrance"])
             leaf_box("entrance_leaf", w, a0 + 0.07 if o["hinge"] == "a0" else a1 - 0.07, 1 if o["hinge"] == "a0" else -1,
                      o.get("side", -s), o.get("swing", 50), (a1 - a0) - 0.14, 0.06, 0.01, head - 0.07, M["entrance"],
                      f1 if s < 0 else f0)  # hinged on the frame's inner edge, swinging into the house
             o["_portal"] = (w, a0, a1, 0.0, head)
         else:  # interior door: a casing round the opening and a leaf open at the plan's angle
-            frame_bar(w, a0, a0 + 0.04, f0, f1, 0.0, head, M["door"], "casing")
-            frame_bar(w, a1 - 0.04, a1, f0, f1, 0.0, head, M["door"], "casing")
+            frame_bar(w, a0, a0 + 0.04, f0, f1, 0.0, head - 0.04, M["door"], "casing")
+            frame_bar(w, a1 - 0.04, a1, f0, f1, 0.0, head - 0.04, M["door"], "casing")
             frame_bar(w, a0, a1, f0, f1, head - 0.04, head, M["door"], "casing")
             side = o.get("side", 1)
             face = hi if side > 0 else lo
