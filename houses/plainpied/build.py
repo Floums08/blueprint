@@ -1021,7 +1021,7 @@ with into("labels"):
     for rm in PLAN["rooms"]:
         area = sum((x1 - x0) * (y1 - y0) for x0, x1, y0, y1 in rm["rects"])
         cu = bpy.data.curves.new("label_" + rm["name"], "FONT")
-        cu.body = f"{rm['name']}\n{area:.2f} m²".replace(".", ",")
+        cu.body = f"{rm['name']}\n{area:.2f} m²\n(plan {rm['area_plan']:g})".replace(".", ",")  # measured, then the plan's label
         cu.align_x = "CENTER"
         cu.align_y = "CENTER"
         cu.size = 0.26
