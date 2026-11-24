@@ -938,7 +938,8 @@ def plant(f):
     pr = 0.11 + 0.08 * h
     cy("pot", x, y, pr, 0.0, 0.28 * h, M["terracotta"] if h < 1 else M["ceramic"], bevel=0.01, r2=pr * 0.8)
     cy("soil", x, y, pr * 0.92, 0.0, 0.28 * h - 0.02, M["soil"], bevel=0.0)
-    leafy("leaf", x, y, 0.26 * h, h * 0.75, 0.25 + 0.2 * h, M["leaf"], int(x * 100 + y * 10), n=int(18 + 18 * h), size=0.06 + 0.05 * h)
+    # reach (spread + a leaf) is about 0.3 + 0.17 h: keep a plant that far off any wall or a leaf comes through it
+    leafy("leaf", x, y, 0.26 * h, h * 0.75, 0.18 + 0.12 * h, M["leaf"], int(x * 100 + y * 10), n=int(18 + 18 * h), size=0.06 + 0.05 * h)
 
 
 def pendant(f):
