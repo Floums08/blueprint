@@ -12,6 +12,9 @@ Run:
   python -c "import bpy" works too: python houses/plainpied/build.py -- top   (bpy from pip)
 Shots: top (orthographic, to lay over the plan with compare.py), dollhouse, exterior, living, kitchen, bedroom.
 Stills land in blueprint-out/plainpied/render_<shot>.png; --blend also saves the scene there.
+With --film (film.py sets it) the house is cut the way it is built: the slab in 1 m tiles, the walls in 50 x 20 cm
+blocks and the partitions in 66 x 50 cm plaster tiles (running bond), the bedrooms' parquet in planks, the ceiling in
+plasterboard sheets, the roof in rafters and rows of tiles laid from the eaves up.
 """
 import json
 import math
@@ -47,6 +50,8 @@ GROUND = -0.22
 OUTLINE = PLAN["outline"]
 WALLS = {w["id"]: w for w in PLAN["walls"]}
 IN_LAYER = 0.10  # inner (painted) layer of an exterior wall; the window frames sit on its outer face
+FILM = K.FILM
+FOOT = [(1.57, 11.8, 0.0, 9.2), (0.0, 1.57, 0.0, 3.31)]  # the outline as two rectangles: main block, cellier annex
 
 
 def P(x, y):
@@ -94,8 +99,10 @@ def principled(name, color, rough=0.5, metal=0.0, emission=None, estr=0.0, sheen
 
 
 def coord(N, L, space="Object"):
+    """Object coordinates plus the part's 'rest' location (the film sets it), so a floor or a roof cut into pieces
+    stays one continuous pattern and a part keeps its texture in flight; without 'rest' it is plain Object."""
     tc = N.new("ShaderNodeTexCoord")
-    return tc.outputs[space]
+    return K.ocoord(N, L, tc) if space == "Object" else tc.outputs[space]
 
 
 def swizzle(N, L, v, order):
@@ -337,7 +344,9 @@ M = {
     "terrace": tiles("terrace", (0.62, 0.6, 0.56), (0.58, 0.56, 0.52), (0.4, 0.38, 0.35), 0.6, 0.6, rough=0.7, joint_w=0.006),
     "leaf": leaves("leaf", (0.12, 0.25, 0.08)),
     "leaf_dark": leaves("leaf_dark", (0.07, 0.15, 0.06)),
+    "leaf_tree": leaves("leaf_tree", (0.12, 0.25, 0.08)),
     "bark": principled("bark", (0.2, 0.15, 0.11), 0.9),
+    "bark_tree": principled("bark_tree", (0.2, 0.15, 0.11), 0.9),
     "art": principled("art_print", (0.62, 0.44, 0.33), 0.8),
     "art2": principled("art_print_2", (0.2, 0.25, 0.28), 0.8),
     "shade": principled("lamp_shade", (0.95, 0.92, 0.86), 0.8, emission=(1.0, 0.8, 0.55), estr=0.6),
@@ -431,7 +440,34 @@ def layers(w):
     return (lo + IN_LAYER, hi), (lo, lo + IN_LAYER), lo + IN_LAYER
 
 
+def blocks(w, a0, a1, z0, z1, name, top=None):
+    """The film's wall: 50 x 20 cm blocks (exterior) or 66 x 50 cm plaster tiles (partitions) in running bond,
+    the bond measured from the wall's own start so the pieces between openings line up. Each block is the wall's
+    full thickness: render where it faces out, paint inside."""
+    ext = bool(w.get("ext"))
+    BL, BH = (0.5, 0.2) if ext else (0.66, 0.5)
+    lo = w["x0"] if axis_of(w) == "x" else w["y0"]
+    out = []
+    for c in range(int(math.floor(z0 / BH + 1e-6)), int(math.ceil(z1 / BH - 1e-6))):
+        zb0, zb1 = max(z0, c * BH), min(z1, (c + 1) * BH)
+        if zb1 - zb0 < 0.01:
+            continue
+        off = BL / 2 if c % 2 else 0.0
+        j = int(math.floor((a0 - lo + off) / BL + 1e-6))
+        while lo - off + j * BL < a1 - 1e-6:
+            ab0, ab1 = max(a0, lo - off + j * BL), min(a1, lo - off + (j + 1) * BL)
+            j += 1
+            if ab1 - ab0 < 0.01:
+                continue
+            o = wall_box(name, *rect(w, ab0, ab1), zb0, zb1, "in" if ext else "part", top=top if zb1 >= z1 - 1e-6 else None)
+            o["course"] = c
+            out.append(o)
+    return out
+
+
 def wall_part(w, a0, a1, z0, z1, name="wall", top=None, top_in=None):
+    if FILM:
+        return blocks(w, a0, a1, z0, z1, name, top)
     if not w.get("ext"):
         return [wall_box(name, *rect(w, a0, a1), z0, z1, "part", top=top)]
     (o0, o1), (i0, i1), _ = layers(w)
@@ -457,29 +493,64 @@ def spans(w):
 
 
 # ---------------------------------------------------------------- slab, floors, ceiling
+def grid(x0, x1, y0, y1, sx, sy):
+    """A rectangle cut into sx by sy cells (the last row and column trimmed)."""
+    ys = y0
+    while ys < y1 - 1e-6:
+        xs = x0
+        while xs < x1 - 1e-6:
+            yield xs, min(x1, xs + sx), ys, min(y1, ys + sy)
+            xs += sx
+        ys += sy
+
+
 stage("slab")
 slab_poly = [P(x, y) for x, y in OUTLINE]
-K.prism("slab", [(p.x, p.y) for p in slab_poly], lambda x, y: 0.0, 0.3, None, mats=[M["tile"], M["plinth"], M["slab"]])
+if FILM:
+    for fx0, fx1, fy0, fy1 in FOOT:
+        for c in grid(fx0, fx1, fy0, fy1, 1.0, 1.0):
+            bx("slab_tile", *c, -0.3, 0.0, None, bevel=0.0, mats=[M["tile"], M["plinth"], M["slab"]])
+else:
+    K.prism("slab", [(p.x, p.y) for p in slab_poly], lambda x, y: 0.0, 0.3, None, mats=[M["tile"], M["plinth"], M["slab"]])
 stage("floor")
 for rm in PLAN["rooms"]:
     if rm["floor"] == "tile":
         continue
     for x0, x1, y0, y1 in rm["rects"]:
-        bx("floor_" + rm["name"], x0 - 0.04, x1 + 0.04, y0 - 0.04, y1 + 0.04, 0.0, 0.008, M[rm["floor"]], bevel=0.0)
+        if FILM:  # one plank row at a time, 19 cm wide, across the room
+            for c in grid(x0 - 0.04, x1 + 0.04, y0 - 0.04, y1 + 0.04, 99.0, 0.19):
+                bx("plank", *c, 0.0, 0.008, M[rm["floor"]], bevel=0.0)
+        else:
+            bx("floor_" + rm["name"], x0 - 0.04, x1 + 0.04, y0 - 0.04, y1 + 0.04, 0.0, 0.008, M[rm["floor"]], bevel=0.0)
 with into("interior"):
     stage("ceiling")
-    K.prism("ceiling", [(p.x, p.y) for p in slab_poly], lambda x, y: H + 0.2, 0.2, M["paint"])
+    if FILM:  # plasterboard sheets, 1.2 x 2.4 m
+        for fx0, fx1, fy0, fy1 in FOOT:
+            for c in grid(fx0, fx1, fy0, fy1, 1.2, 2.4):
+                bx("ceiling_sheet", *c, H, H + 0.025, M["paint"], bevel=0.0)
+    else:
+        K.prism("ceiling", [(p.x, p.y) for p in slab_poly], lambda x, y: H + 0.2, 0.2, M["paint"])
 
 # ---------------------------------------------------------------- walls
-stage("walls")
+def wall_top(w):
+    """The film builds the main block's exterior walls in one go up to the roof; the stills stop them at the ceiling."""
+    return TOP if (FILM and w.get("ext") and not w.get("annex")) else H
+
+
+BAND_W = {"id": "band_west", "ext": True, "x0": 1.57, "x1": 1.84, "y0": 0.29, "y1": 3.02}  # the main block's west wall above the annex roof
 for w in PLAN["walls"]:
+    stage("walls" if w.get("ext") else "partitions")
     for a0, a1 in spans(w):
-        wall_part(w, a0, a1, 0.0, H, "wall")
-    if w.get("ext") and not w.get("annex"):
+        wall_part(w, a0, a1, 0.0, wall_top(w), "wall")
+    if w.get("ext") and not w.get("annex") and not FILM:
         with into("roof"):  # the band between the ceiling and the roof: only seen from outside
             wall_box("wall_band", *rect(w, *((w["x0"], w["x1"]) if axis_of(w) == "x" else (w["y0"], w["y1"]))), H, TOP, "out")
-with into("roof"):  # the main block's west wall above the annex roof
-    wall_box("wall_band", 1.57, 1.84, 0.29, 3.02, H, TOP, "out")
+stage("walls")
+if FILM:
+    blocks(BAND_W, 0.29, 3.02, H, TOP, "wall_band")
+else:
+    with into("roof"):
+        wall_box("wall_band", 1.57, 1.84, 0.29, 3.02, H, TOP, "out")
 
 
 # ---------------------------------------------------------------- openings: lintels, sills, frames, glass, doors
@@ -527,7 +598,11 @@ for wid, ops in OPEN.items():
         a0, a1, kind = o["a0"], o["a1"], o["kind"]
         head = WIN if kind == "window" else (o.get("h", WIN) if kind == "entrance" else DOOR)
         sill = 0.0 if (kind != "window" or o.get("french")) else round(head - o["h"], 3)
-        wall_part(w, a0, a1, head, H, "lintel")
+        stage("walls" if ext else "partitions")
+        wall_part(w, a0, a1, head, wall_top(w), "lintel")
+        if sill > 0:
+            wall_part(w, a0, a1, 0.0, sill, "sill", top=M["stone"], top_in=M["sill_int"])
+        stage("openings")
         if ext:
             (o0, o1), (i0, i1), jp = layers(w)
             s = outward(w)
@@ -536,9 +611,7 @@ for wid, ops in OPEN.items():
             outer = lo if s < 0 else hi
         else:
             f0, f1, fc = lo - 0.012, hi + 0.012, (lo + hi) / 2
-        if sill > 0:
-            wall_part(w, a0, a1, 0.0, sill, "sill", top=M["stone"], top_in=M["sill_int"])
-            # the projecting stone sill outside
+        if sill > 0:  # the projecting stone sill outside
             ps0, ps1 = (outer - 0.05, outer + 0.02) if s < 0 else (outer - 0.02, outer + 0.05)
             bx("appui", *rect(w, a0 - 0.04, a1 + 0.04, min(ps0, ps1), max(ps0, ps1)), sill - 0.05, sill + 0.005, M["stone"], bevel=0.004)
         if kind == "window":
@@ -573,7 +646,7 @@ for wid, ops in OPEN.items():
             frame_bar(w, a1 - 0.07, a1, f0, f1, 0.0, head - 0.07, M["entrance"])
             frame_bar(w, a0, a1, f0, f1, head - 0.07, head, M["entrance"])
             leaf_box("entrance_leaf", w, a0 + 0.07 if o["hinge"] == "a0" else a1 - 0.07, 1 if o["hinge"] == "a0" else -1,
-                     o.get("side", -s), o.get("swing", 50), (a1 - a0) - 0.14, 0.06, 0.01, head - 0.07, M["entrance"],
+                     o.get("side", -s), o.get("film_swing" if FILM else "swing", o.get("swing", 50)), (a1 - a0) - 0.14, 0.06, 0.01, head - 0.07, M["entrance"],
                      f1 if s < 0 else f0)  # hinged on the frame's inner edge, swinging into the house
             o["_portal"] = (w, a0, a1, 0.0, head)
         else:  # interior door: a casing round the opening and a leaf open at the plan's angle
@@ -612,8 +685,53 @@ with into("roof"):
         "west": ([(RX0, RY1), (RX0, RY0), (RA, RIDGE_Y)], "roof_y"),
         "east": ([(RX1, RY0), (RX1, RY1), (RB, RIDGE_Y)], "roof_y"),
     }
-    for pn, (poly, mk) in pans.items():
-        K.prism("roof_" + pn, [(P(x, y).x, P(x, y).y) for x, y in poly], roof_z, RTH, None, mats=[M[mk], M["soffit"], M["soffit"]])
+    if FILM:
+        # the frame first: a rafter every 60 cm on each pan, square to its eave, up to the ridge or the hip, inside the
+        # roof's thickness (hidden once the tiles are on); the ridge and the four hips
+        stage("roof_frame")
+        EAVES = {"north": ((0, 1), RY0), "south": ((0, -1), RY1), "west": ((1, 0), RX0), "east": ((-1, 0), RX1)}
+
+        def rafter_pt(x, y, dz=-0.1):
+            q = P(x, y)
+            return (q.x, q.y, roof_z(q.x, q.y) + dz)
+
+        for pn, ((ux, uy), e) in EAVES.items():
+            along = (RX0, RX1) if ux == 0 else (RY0, RY1)
+            n = int((along[1] - along[0]) / 0.6)
+            for k in range(1, n + 1):
+                a = along[0] + (along[1] - along[0]) * k / (n + 1)
+                reach_ = min(HALF, a - along[0], along[1] - a)  # a jack rafter stops at the hip
+                if reach_ < 0.25:
+                    continue
+                if ux == 0:
+                    p0, p1 = (a, e), (a, e + uy * reach_)
+                else:
+                    p0, p1 = (e, a), (e + ux * reach_, a)
+                K.beam("rafter", rafter_pt(*p0), rafter_pt(*p1), 0.05, 0.12, M["oak"])
+        for (xa, ya), (xb, yb) in [((RA, RIDGE_Y), (RB, RIDGE_Y)), ((RX0, RY0), (RA, RIDGE_Y)), ((RX0, RY1), (RA, RIDGE_Y)),
+                                   ((RX1, RY0), (RB, RIDGE_Y)), ((RX1, RY1), (RB, RIDGE_Y))]:
+            K.beam("ridge_beam", rafter_pt(xa, ya, -0.12), rafter_pt(xb, yb, -0.12), 0.08, 0.18, M["oak"])
+        # then the tiles, a 60 cm band at a time from the eaves up
+        stage("roof")
+        for pn, (poly, mk) in pans.items():
+            (ux, uy), e = EAVES[pn]
+            d = 0.0
+            while d < HALF - 1e-6:
+                strip = poly
+                if ux == 0:  # bands in y
+                    lo_, hi_ = (e + d, e + d + 0.6) if uy > 0 else (e - d - 0.6, e - d)
+                    strip = K.clip_poly(K.clip_poly(strip, 0, -1, -lo_), 0, 1, hi_)
+                else:
+                    lo_, hi_ = (e + d, e + d + 0.6) if ux > 0 else (e - d - 0.6, e - d)
+                    strip = K.clip_poly(K.clip_poly(strip, -1, 0, -lo_), 1, 0, hi_)
+                d += 0.6
+                if len(strip) < 3:
+                    continue
+                o = K.prism("tile_row", [(P(x, y).x, P(x, y).y) for x, y in strip], roof_z, RTH, None, mats=[M[mk], M["soffit"], M["soffit"]])
+                o["row"] = round(d / 0.6)
+    else:
+        for pn, (poly, mk) in pans.items():
+            K.prism("roof_" + pn, [(P(x, y).x, P(x, y).y) for x, y in poly], roof_z, RTH, None, mats=[M[mk], M["soffit"], M["soffit"]])
     # ridge and hip rolls
     ridge = [((RA, RIDGE_Y), (RB, RIDGE_Y))] + [((RX0, RY0), (RA, RIDGE_Y)), ((RX0, RY1), (RA, RIDGE_Y)), ((RX1, RY0), (RB, RIDGE_Y)), ((RX1, RY1), (RB, RIDGE_Y))]
     for (xa, ya), (xb, yb) in ridge:
@@ -998,7 +1116,8 @@ def blob(name, x, y, z, r, mat, squash=0.8, seed=0):
 with into("site"):
     stage("site")
     gp = P(5.9, 4.6)
-    K.box("lawn", gp.x - 400, gp.x + 400, gp.y - 400, gp.y + 400, GROUND - 0.05, GROUND, M["lawn"], bevel=0.0)
+    # far past the horizon: from a few metres up, a nearer edge shows the dark underside of the sky as a band
+    K.box("lawn", gp.x - 4000, gp.x + 4000, gp.y - 4000, gp.y + 4000, GROUND - 0.05, GROUND, M["lawn"], bevel=0.0)
     S_ = PLAN["site"]
     for x0, x1, y0, y1 in S_["terrace"]:
         bx("terrace", x0, x1, y0, y1, GROUND, -0.03, M["terrace"], bevel=0.004)
@@ -1009,10 +1128,10 @@ with into("site"):
         blob("shrub", x, y, GROUND + r * 0.6, r, M["leaf_dark"], 0.85, k)
     for k, (x, y, h) in enumerate(S_["trees"]):
         p = P(x, y)
-        K.tube("trunk", (p.x, p.y, GROUND), (p.x, p.y, GROUND + h * 0.65), 0.09, M["bark"], verts=12)
+        K.tube("trunk", (p.x, p.y, GROUND), (p.x, p.y, GROUND + h * 0.65), 0.09, M["bark_tree"], verts=12)
         for j in range(4):
             a = j * 1.7 + k
-            blob("crown", x + 0.5 * math.cos(a), y + 0.5 * math.sin(a), GROUND + h * (0.7 + 0.12 * j), h * 0.32, M["leaf"], 0.8, j + k)
+            blob("crown", x + 0.5 * math.cos(a), y + 0.5 * math.sin(a), GROUND + h * (0.7 + 0.12 * j), h * 0.32, M["leaf_tree"], 0.8, j + k)
     bx("planter_bed", 1.84, 11.8, 9.2, 10.2, GROUND, GROUND + 0.02, M["gravel"], bevel=0.0)
 
 with into("catcher"):
@@ -1198,7 +1317,7 @@ def bedroom():
 
 
 SHOT = {"top": top, "dollhouse": dollhouse, "exterior": exterior, "living": living, "kitchen": kitchen, "bedroom": bedroom}
-if OPTS.get("blend"):
+if OPTS.get("blend") and not FILM:
     bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(os.path.join(OUT, "plainpied.blend")))
 for s in ([] if K.FILM else SHOTS):
     portals(False)

@@ -35,11 +35,11 @@ python "$SKILL_DIR/houses/courtyard/fetch_assets.py"
 | **Courtyard house** | a pen sketch on paper (`sketch.png`) | `houses/courtyard/` | 14 x 14 m, a 7 x 7 m court with a red maple, tatami room, engawa, standing-seam ring roof. The film opens on the sketch, builds 2,444 parts on the paper in white clay with each system flashing its colour and a counter, then a wave from the maple turns paper into hillside and clay into cedar, washi and stone. |
 | **Cliff villa** | 4 reference images | `houses/villa/` | A travertine pavilion on a headland at sunset, an infinity pool cantilevered over the cliff. The film runs in over the sea, builds the villa from tiles and blocks, fills the pool, lights it up and dives in through the open glass. |
 | **Apartment** | a floor plan from a sales brochure | `houses/apartment/` | A 3-bedroom flat, walls traced from the plan's fill at its scale bar, doors and furniture read on a metre grid. A dollhouse view, then a walk through. |
-| **Plain-pied house** | a builder's plan with dimension labels | `houses/plainpied/` | A single-storey 3-bedroom house, 11.8 x 9.2 m with a cellier annex. Scale from the overall dimensions, walls written as numbers and checked against the traced fill (99 % overlap), every room's area checked against its label. Hipped Roman-tile roof, shutters, procedural materials (no downloads). Stills only: an orthographic top view laid over the plan (`compare.py`), a dollhouse, the exterior and three rooms. |
+| **Plain-pied house** | a builder's plan with dimension labels | `houses/plainpied/` | A single-storey 3-bedroom house, 11.8 x 9.2 m with a cellier annex. Scale from the overall dimensions, walls written as numbers and checked against the traced fill (99 % overlap), every room's area checked against its label. Hipped Roman-tile roof, shutters, procedural materials (no downloads). Stills (an orthographic top view laid over the plan with `compare.py`, a dollhouse, the exterior, three rooms) and a film sized for a CPU: the plan at its real scale, 2,460 parts in clay (50 x 20 cm blocks, plaster tiles, planks, ceiling sheets, rafters, tile rows), a wave out of the front door, in through it to the living room. |
 
 Each house has `build.py` (the scene, stills), `film.py` (the film), `score.py` (the action sounds on the film's
-timeline) and `music_plan.json` (an ElevenLabs composition plan); the plain-pied house has the stills side only.
-Copy the closest one for a new house.
+timeline) and `music_plan.json` (an ElevenLabs composition plan). Copy the closest one for a new house; the
+plain-pied house is the one to start from without a GPU (960x540, 12 samples, about 15 s a frame on 4 CPU cores).
 
 ```
 blender -b --factory-startup -P houses/courtyard/build.py -- tatami engawa corner --samples 192 --res 1920x1080

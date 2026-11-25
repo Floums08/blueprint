@@ -1,0 +1,10 @@
+{
+  "positive_global_styles": ["warm modern acoustic electronic", "bright architectural film", "felt piano chords", "plucked guitar and marimba", "soft claps", "round bass", "100 bpm", "instrumental", "constant energy"],
+  "negative_global_styles": ["silence", "pauses", "stops", "fade out", "outro", "ending", "vocals", "dark", "aggressive", "dubstep", "horror"],
+  "sections": [
+    {"section_name": "The plan", "positive_local_styles": ["felt piano and a ticking shaker from the first beat", "anticipation", "paper and pencil lightness"], "negative_local_styles": ["silence", "fade in", "pause"], "duration_ms": 3000, "lines": []},
+    {"section_name": "Building", "positive_local_styles": ["kick enters", "busy percussive groove of knocks and clicks", "marimba arpeggios", "rising energy bar by bar"], "negative_local_styles": ["pause", "silence", "drop out", "breakdown"], "duration_ms": 10000, "lines": []},
+    {"section_name": "The wave", "positive_local_styles": ["a lift", "wide bright chords", "shimmering pads", "uplifting arrival"], "negative_local_styles": ["silence", "stop", "fade out"], "duration_ms": 3000, "lines": []},
+    {"section_name": "Home", "positive_local_styles": ["warm relaxed groove", "felt piano", "sunlit and calm", "steady kick", "cozy"], "negative_local_styles": ["pause", "silence", "fade out", "ending"], "duration_ms": 6500, "lines": []}
+  ]
+}

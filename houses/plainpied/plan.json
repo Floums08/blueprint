@@ -32,7 +32,7 @@
     {"wall": "N", "kind": "window", "name": "kitchen", "a0": 3.1, "a1": 4.3, "h": 1.15},
     {"wall": "N", "kind": "window", "name": "bath", "a0": 7.07, "a1": 7.47, "h": 0.45, "frosted": true},
     {"wall": "N", "kind": "window", "name": "bedroom2", "a0": 9.14, "a1": 10.37, "h": 1.15},
-    {"wall": "W", "kind": "entrance", "name": "entrance", "a0": 3.6, "a1": 4.57, "h": 2.15, "hinge": "a0", "side": 1, "swing": 55},
+    {"wall": "W", "kind": "entrance", "name": "entrance", "a0": 3.6, "a1": 4.57, "h": 2.15, "hinge": "a0", "side": 1, "swing": 55, "film_swing": 92},
     {"wall": "W", "kind": "window", "name": "living_west", "a0": 5.69, "a1": 6.9, "h": 2.15, "french": true},
     {"wall": "S", "kind": "window", "name": "living_south", "a0": 3.06, "a1": 4.26, "h": 1.15},
     {"wall": "S", "kind": "window", "name": "bedroom1", "a0": 6.98, "a1": 8.21, "h": 1.15},
