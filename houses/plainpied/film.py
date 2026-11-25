@@ -538,7 +538,7 @@ if "to" in OPTS:
     scene.frame_end = min(NF, F(float(OPTS["to"])))
 scene.frame_step = int(OPTS.get("step", 1))
 scene.render.use_motion_blur = False
-scene.render.use_persistent_data = True
+scene.render.use_persistent_data = False  # with it on, parts that were scaled to 0 can render black once they appear
 scene.render.film_transparent = False
 scene.render.use_overwrite = False  # resume: frames on disk are skipped
 scene.render.use_placeholder = True
